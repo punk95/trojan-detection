@@ -1,9 +1,11 @@
+from ast import arg
+import imp
 import torch
 import torchvision
 import torchvision.transforms as transforms
 from torchsummary import summary
 from torch import nn
-
+from argparse import ArgumentParser
 
 
 
@@ -42,22 +44,65 @@ def flattenTheNN(model):
     return ans
 
 if __name__=="__main__":
-    batchSize = 1
-
-    m = torch.load("../datasets/detection/train/clean/id-0000/model.pt")
-    m.to("cuda")
-
-
-    summary(m,(3,32,32))
+    args =  ArgumentParser()
+    args.add_argument("--batchSize",type=int,default=5)
+    args.add_argument("--dataset",type=str,default="mnist")
+    args.add_argument("--modelFile",type=str,default="../datasets/detection/train/trojan/id-0400/model.pt")
+    args = args.parse_args()
 
 
-    transformToNormalizedTensor = transforms.Compose(
-        [transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-    trainset = torchvision.datasets.CIFAR10(root='./data', train=True,download=True, transform=transformToNormalizedTensor)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batchSize,shuffle=True, num_workers=2)
-    testset = torchvision.datasets.CIFAR10(root='./data', train=False,download=True, transform=transformToNormalizedTensor)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=batchSize,shuffle=False, num_workers=2)
+    batchSize = args.batchSize
+    BATCH_SIZE = batchSize
+    DATASET = args.dataset
+    MODEL_FILE = args.modelFile
+
+    originalModel = torch.load(MODEL_FILE)
+    originalModel.to("cuda")
+    
+
+
+
+
+    if DATASET=="cifar":
+
+        # Do we actually need this? Are means and std dev correct?
+        transformToNormalizedTensor = transforms.Compose(
+            [transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        
+        
+        trainset = torchvision.datasets.CIFAR10(root='./data', train=True,download=True, transform=transformToNormalizedTensor)
+        trainloader = torch.utils.data.DataLoader(trainset, batch_size=batchSize,shuffle=True, num_workers=1)
+        testset = torchvision.datasets.CIFAR10(root='./data', train=False,download=True, transform=transformToNormalizedTensor)
+        testloader = torch.utils.data.DataLoader(testset, batch_size=batchSize,shuffle=False, num_workers=1)
+
+
+        summary(originalModel,(3,32,32))
+
+    elif DATASET=="mnist":
+        trainset = torchvision.datasets.MNIST(root='./data', train=True,download=True, transform=transforms.ToTensor())
+        trainloader = torch.utils.data.DataLoader(trainset, batch_size=batchSize,shuffle=True, num_workers=1)
+        testset = torchvision.datasets.MNIST(root='./data', train=False,download=True, transform=transforms.ToTensor())
+        testloader = torch.utils.data.DataLoader(testset, batch_size=batchSize,shuffle=False, num_workers=1)
+
+        summary(originalModel,(1,28,28))
+
+
+    else:
+        assert False, "ERROR: Wrong dataset"
+
+
+
+
+    
+
+
+
+    print("Evaluating model.....")
+    trainAcc = evaluateModel(originalModel,trainloader,BATCH_SIZE)
+    testAcc = evaluateModel(originalModel,testloader,BATCH_SIZE)
+    print("Train acc=",trainAcc," Test acc=",testAcc)
+
 
     testIter = iter(testloader)
 
@@ -69,7 +114,7 @@ if __name__=="__main__":
     print("Y.size()",yTrue.size())
     print("Y",yTrue)
 
-    yPred = m(x)
+    yPred = originalModel(x)
 
 
 
@@ -86,9 +131,9 @@ if __name__=="__main__":
 
 
     
-    namedLayers = dict(m.named_modules())
+    namedLayers = dict(originalModel.named_modules())
 
-    layerList = flattenTheNN(m)
+    layerList = flattenTheNN(originalModel)
 
 
     
@@ -113,7 +158,7 @@ if __name__=="__main__":
         # NN2: breakAndStart[i][1] ------> output
 
 
-        NN1 = nn.Sequential(*layerList[:breakAndStart[i][0]])
+        NN1 = nn.Sequential(*layerList[:breakAndStart[i][0]+1])
         NN2 = nn.Sequential(*layerList[breakAndStart[i][1]:])
 
 
@@ -131,6 +176,23 @@ if __name__=="__main__":
 
     print("DEBUG 132: Checking if NN pairs work")
     
+    yPredOriginalModel = originalModel(x)
+    for i in range(len(modelPairs)):
+        print("DEBUG 136: ")
+        print("NN1  -->",modelPairs[i][0])
+        print("NN2  -->",modelPairs[i][1])
+
+        nn1Out = modelPairs[i][0](x)
+        print(nn1Out.size())
+        nn2Out = modelPairs[i][1](nn1Out)
+        print("original out",yPredOriginalModel)
+        print("two model out",nn2Out)
+
+
+
+
+
+
 
 
     '''
