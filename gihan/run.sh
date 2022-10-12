@@ -17,3 +17,4 @@ python simulate-neurons.py
 
 
 echo "Job finished at $(date)"
+touch gihanComplete.txt
