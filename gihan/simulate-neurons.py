@@ -47,36 +47,61 @@ if __name__=="__main__":
     args =  ArgumentParser()
     args.add_argument("--batchSize",type=int,default=5)
     args.add_argument("--dataset",type=str,default="mnist")
+    args.add_argument("--modelFile",type=str,default="../datasets/detection/train/trojan/id-0400/model.pt")
     args = args.parse_args()
 
 
     batchSize = args.batchSize
+    BATCH_SIZE = batchSize
     DATASET = args.dataset
+    MODEL_FILE = args.modelFile
 
-    originalModel = torch.load("../datasets/detection/train/trojan/id-0400/model.pt")
+    originalModel = torch.load(MODEL_FILE)
     originalModel.to("cuda")
     
 
 
-    summary(originalModel,(3,32,32))
 
 
     if DATASET=="cifar":
 
+        # Do we actually need this? Are means and std dev correct?
         transformToNormalizedTensor = transforms.Compose(
             [transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+        
+        
         trainset = torchvision.datasets.CIFAR10(root='./data', train=True,download=True, transform=transformToNormalizedTensor)
-        trainloader = torch.utils.data.DataLoader(trainset, batch_size=batchSize,shuffle=True, num_workers=2)
+        trainloader = torch.utils.data.DataLoader(trainset, batch_size=batchSize,shuffle=True, num_workers=1)
         testset = torchvision.datasets.CIFAR10(root='./data', train=False,download=True, transform=transformToNormalizedTensor)
-        testloader = torch.utils.data.DataLoader(testset, batch_size=batchSize,shuffle=False, num_workers=2)
+        testloader = torch.utils.data.DataLoader(testset, batch_size=batchSize,shuffle=False, num_workers=1)
+
+
+        summary(originalModel,(3,32,32))
 
     elif DATASET=="mnist":
-        print("")
-        #  
+        trainset = torchvision.datasets.MNIST(root='./data', train=True,download=True, transform=transforms.ToTensor())
+        trainloader = torch.utils.data.DataLoader(trainset, batch_size=batchSize,shuffle=True, num_workers=1)
+        testset = torchvision.datasets.MNIST(root='./data', train=False,download=True, transform=transforms.ToTensor())
+        testloader = torch.utils.data.DataLoader(testset, batch_size=batchSize,shuffle=False, num_workers=1)
+
+        summary(originalModel,(1,28,28))
+
 
     else:
         assert False, "ERROR: Wrong dataset"
+
+
+
+
+    
+
+
+
+    print("Evaluating model.....")
+    trainAcc = evaluateModel(originalModel,trainloader,BATCH_SIZE)
+    testAcc = evaluateModel(originalModel,testloader,BATCH_SIZE)
+    print("Train acc=",trainAcc," Test acc=",testAcc)
 
 
     testIter = iter(testloader)
