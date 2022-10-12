@@ -25,7 +25,7 @@ def evaluateModel(m,dataLoader,batchSize):
 
 
 
-def getAllChildren(model):
+def flattenTheNN(model):
     print("Calling get all children")
     ans = list(model.children())
     print("DEBUG: (13)\t ans: ",ans)
@@ -87,14 +87,11 @@ if __name__=="__main__":
 
     
     namedLayers = dict(m.named_modules())
-    layerNames = namedLayers.keys()
 
-    layerList = getAllChildren(m)
+    layerList = flattenTheNN(m)
 
 
     
-    for l in range(len(layerList)):
-        print(l,"-----",layerList[l])
         
 
 
@@ -102,23 +99,38 @@ if __name__=="__main__":
 
 
 
-    for lIdx in range(len(layerNames)):
-        if isinstance(namedLayers[layerNames[lIdx]],nn.ReLU):
+    for lIdx in range(len(layerList)):
+        if isinstance(layerList[lIdx],nn.ReLU):
             breakAndStart.append([lIdx,lIdx+1])
 
-
+    print("DEBUG: 109: breakAndStart: ",breakAndStart)
     modelPairs = []
 
     for i in range(len(breakAndStart)):
+
         # NN : input ----> breakAndStart[i][0]  =====> breakAndStart[i][1] ------> output
         # NN1: input ----> breakAndStart[i][0]
         # NN2: breakAndStart[i][1] ------> output
-        
-        # modelPairs.addpend([NN1,NN2])
-        print("This is how I make two small models NN1, NN2 by breaking NN ;-)")
+
+
+        NN1 = nn.Sequential(*layerList[:breakAndStart[i][0]])
+        NN2 = nn.Sequential(*layerList[breakAndStart[i][1]:])
+
+
+        modelPairs.append([NN1,NN2])
+
+
+    print("DEBUG: 119: modelPairs: ")
+    for i in range(len(modelPairs)):
+        print("--------------------")
+        print("modelPairs[",i,"][0]: ",modelPairs[i][0])
+        print("modelPairs[",i,"][1]: ",modelPairs[i][1])
 
 
 
+
+    print("DEBUG 132: Checking if NN pairs work")
+    
 
 
     '''
@@ -139,9 +151,8 @@ if __name__=="__main__":
 
 
 
-
+    print("This accuracy test is not that important at the moment. This is just to keep the code running.")
     accuracy = torch.mean(torch.eq(yTrue,yPred).float())
-
     print("Accuracy: ",accuracy)
 
     print("END of Program")
