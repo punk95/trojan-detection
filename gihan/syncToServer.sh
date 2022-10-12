@@ -1,0 +1,1 @@
+rsync  --progress --stats -r --exclude 'results' ./ c828w018@nexusclass00.umiacs.umd.edu:/fs/class-projects/fall2022/cmsc828w/c828w018/trojan-detection/gihan/
