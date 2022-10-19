@@ -281,6 +281,11 @@ if __name__ == "__main__":
         if isinstance(layerList[lIdx], nn.ReLU):
             breakAndStart.append([lIdx, lIdx + 1])
 
+
+    torch.save(breakAndStart, "index_list")
+    torch.save(layerList, "layer_list")
+
+    
     print("DEBUG: 109: breakAndStart: ", breakAndStart)
     modelPairs = []
 
@@ -289,6 +294,7 @@ if __name__ == "__main__":
 
 
     state_dict = originalModel.state_dict()
+    NN.load_state_dict(state_dict)
     yPredOriginalModel = originalModel(x)
     x, yTrue = testIter.next()
     x = x.to("cuda")
