@@ -49,9 +49,11 @@ class TrojanDataset(Dataset):
         print("Finished creating dataset")
 
     def __getitem__(self, idx):
+        print(self.xFileNames[idx])
         m = torch.load(self.xFileNames[idx]["model"])
         j = json.load(open(self.xFileNames[idx]["info"]))
 
+        
         print(m)
         print(j)
 

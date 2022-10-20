@@ -1,23 +1,30 @@
 from ast import arg
+from distutils.debug import DEBUG
 import imp
+from unittest import TestLoader
 import torch
 import torchvision
 import torchvision.transforms as transforms
 from torchsummary import summary
 from torch import nn
 from argparse import ArgumentParser
+DEBUG = True
 
 
-
-def evaluateModel(m,dataLoader,batchSize):
+def evaluateModel(m,dataLoader,batchSize,noBatches=None):
     correctCount = 0
     N = dataLoader.dataset.data.shape[0]
     for i,(x,y) in enumerate(dataLoader):
-        x = x.to("cuda")
-        y = y.to("cuda")
+        x = x.to(DEVICE)
+        y = y.to(DEVICE)
         yHat = m(x)
         _,yHat = torch.max(yHat,1)
         correctCount += (yHat==y).sum().item()
+        if noBatches!=None:
+            if i==noBatches:
+                break
+            return correctCount/((i+1)*batchSize)
+
     return correctCount/N
 
 
@@ -43,11 +50,36 @@ def flattenTheNN(model):
         
     return ans
 
+
+def findActivationRanges(model,dataLoader):
+    for idx,(miniBatchX,miniBatchY) in enumerate(dataLoader):
+        print(" ")
+
+    return None
+
+
+def getOneDatapointPerLabel(dataLoader):
+    ans = {}
+    for i,(x,y) in enumerate(dataLoader):
+        # if DEBUG: print("DEBUG: 63: ",x.size(),y.size())
+        for idx in range(int(y.size()[0])):
+            print("DEBUG: 66: ",i,idx,y[idx],"-->",ans.keys())
+            print("DEBUG: 67: ",type(y[0]),type(y[0].detach()),type(y[0].detach().item()))
+
+
+            if y[idx] not in ans.keys():
+                ans[y[idx].item()] = x[idx].item()
+            if len(ans.keys())==10:
+                break
+    return ans
+
+
 if __name__=="__main__":
     args =  ArgumentParser()
     args.add_argument("--batchSize",type=int,default=5)
     args.add_argument("--dataset",type=str,default="mnist")
     args.add_argument("--modelFile",type=str,default="../datasets/detection/train/trojan/id-0400/model.pt")
+    args.add_argument("--device",type=str,default="cuda")
     args = args.parse_args()
 
 
@@ -55,9 +87,10 @@ if __name__=="__main__":
     BATCH_SIZE = batchSize
     DATASET = args.dataset
     MODEL_FILE = args.modelFile
+    DEVICE = args.device
 
     originalModel = torch.load(MODEL_FILE)
-    originalModel.to("cuda")
+    originalModel.to(DEVICE)
     
 
 
@@ -92,15 +125,14 @@ if __name__=="__main__":
         assert False, "ERROR: Wrong dataset"
 
 
-
-
-    
+    smallDataset = getOneDatapointPerLabel(testloader)
+    if DEBUG: print("DEBUG: 123: important datapoints: ",smallDataset)
 
 
 
     print("Evaluating model.....")
-    trainAcc = evaluateModel(originalModel,trainloader,BATCH_SIZE)
-    testAcc = evaluateModel(originalModel,testloader,BATCH_SIZE)
+    trainAcc = evaluateModel(originalModel,trainloader,BATCH_SIZE,noBatches=20)
+    testAcc = evaluateModel(originalModel,testloader,BATCH_SIZE,noBatches=20)
     print("Train acc=",trainAcc," Test acc=",testAcc)
 
 
@@ -108,8 +140,8 @@ if __name__=="__main__":
 
 
     x,yTrue = testIter.next()
-    x = x.to("cuda")
-    yTrue = yTrue.to("cuda")
+    x = x.to(DEVICE)
+    yTrue = yTrue.to(DEVICE)
     print("X.size()",x.size())
     print("Y.size()",yTrue.size())
     print("Y",yTrue)
