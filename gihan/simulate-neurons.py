@@ -1,6 +1,7 @@
 from ast import arg
 from distutils.debug import DEBUG
 import imp
+from time import time
 from unittest import TestLoader
 import torch
 import torchvision
@@ -9,7 +10,7 @@ from torchsummary import summary
 from torch import nn
 from argparse import ArgumentParser
 DEBUG = True
-
+import time
 
 def evaluateModel(m,dataLoader,batchSize,noBatches=None):
     correctCount = 0
@@ -59,6 +60,7 @@ def findActivationRanges(model,dataLoader):
 
 
 def getOneDatapointPerLabel(dataLoader):
+    return None
     ans = {}
     for i,(x,y) in enumerate(dataLoader):
         # if DEBUG: print("DEBUG: 63: ",x.size(),y.size())
@@ -131,98 +133,117 @@ if __name__=="__main__":
 
 
     print("Evaluating model.....")
+    
+    
     trainAcc = evaluateModel(originalModel,trainloader,BATCH_SIZE,noBatches=20)
-    testAcc = evaluateModel(originalModel,testloader,BATCH_SIZE,noBatches=20)
-    print("Train acc=",trainAcc," Test acc=",testAcc)
 
+    t=time.time()
+    testAcc = evaluateModel(originalModel,testloader,BATCH_SIZE,noBatches=20)
+    print("Time taken (train set): ",time.time()-t)
+
+    t=time.time()
+    print("Train acc=",trainAcc," Test acc=",testAcc)
+    print("Time taken (test set): ",time.time()-t)
 
     testIter = iter(testloader)
 
 
-    x,yTrue = testIter.next()
-    x = x.to(DEVICE)
-    yTrue = yTrue.to(DEVICE)
-    print("X.size()",x.size())
-    print("Y.size()",yTrue.size())
-    print("Y",yTrue)
-
-    yPred = originalModel(x)
+    totTime=0.0
 
 
+    while testIter.hasNext():
 
-    print("yPred (one hot)",yPred.size())
-    print("yPred",torch.argmax(yPred,dim=1))
-    yPred = torch.argmax(yPred,dim=1)
-    print("yPred (not one hot)",yPred.size())
+        x,yTrue = testIter.next()
+        x = x.to(DEVICE)
+        yTrue = yTrue.to(DEVICE)
+        print("X.size()",x.size())
+        print("Y.size()",yTrue.size())
+        print("Y",yTrue)
+
+        yPred = originalModel(x)
 
 
 
-    '''
-    # Playing with the layers 
-    '''
+        print("yPred (one hot)",yPred.size())
+        print("yPred",torch.argmax(yPred,dim=1))
+        yPred = torch.argmax(yPred,dim=1)
+        print("yPred (not one hot)",yPred.size())
 
 
-    
-    namedLayers = dict(originalModel.named_modules())
 
-    layerList = flattenTheNN(originalModel)
+        '''
+        # Playing with the layers 
+        '''
 
 
-    
         
+        namedLayers = dict(originalModel.named_modules())
+
+        layerList = flattenTheNN(originalModel)
 
 
-    breakAndStart=[]
+        
+            
 
 
-
-    for lIdx in range(len(layerList)):
-        if isinstance(layerList[lIdx],nn.ReLU):
-            breakAndStart.append([lIdx,lIdx+1])
-
-    print("DEBUG: 109: breakAndStart: ",breakAndStart)
-    modelPairs = []
-
-    for i in range(len(breakAndStart)):
-
-        # NN : input ----> breakAndStart[i][0]  =====> breakAndStart[i][1] ------> output
-        # NN1: input ----> breakAndStart[i][0]
-        # NN2: breakAndStart[i][1] ------> output
-
-
-        NN1 = nn.Sequential(*layerList[:breakAndStart[i][0]+1])
-        NN2 = nn.Sequential(*layerList[breakAndStart[i][1]:])
-
-
-        modelPairs.append([NN1,NN2])
-
-
-    print("DEBUG: 119: modelPairs: ")
-    for i in range(len(modelPairs)):
-        print("--------------------")
-        print("modelPairs[",i,"][0]: ",modelPairs[i][0])
-        print("modelPairs[",i,"][1]: ",modelPairs[i][1])
+        breakAndStart=[]
 
 
 
+        for lIdx in range(len(layerList)):
+            if isinstance(layerList[lIdx],nn.ReLU):
+                breakAndStart.append([lIdx,lIdx+1])
 
-    print("DEBUG 132: Checking if NN pairs work")
-    
-    yPredOriginalModel = originalModel(x)
-    for i in range(len(modelPairs)):
-        print("DEBUG 136: ")
-        print("NN1  -->",modelPairs[i][0])
-        print("NN2  -->",modelPairs[i][1])
+        print("DEBUG: 109: breakAndStart: ",breakAndStart)
+        modelPairs = []
 
-        nn1Out = modelPairs[i][0](x)
-        print(nn1Out.size())
-        nn2Out = modelPairs[i][1](nn1Out)
-        print("original out",yPredOriginalModel)
-        print("two model out",nn2Out)
+        for i in range(len(breakAndStart)):
+
+            # NN : input ----> breakAndStart[i][0]  =====> breakAndStart[i][1] ------> output
+            # NN1: input ----> breakAndStart[i][0]
+            # NN2: breakAndStart[i][1] ------> output
+
+
+            NN1 = nn.Sequential(*layerList[:breakAndStart[i][0]+1])
+            NN2 = nn.Sequential(*layerList[breakAndStart[i][1]:])
+
+
+            modelPairs.append([NN1,NN2])
+
+
+        print("DEBUG: 119: modelPairs: ")
+        for i in range(len(modelPairs)):
+            print("--------------------")
+            print("modelPairs[",i,"][0]: ",modelPairs[i][0])
+            print("modelPairs[",i,"][1]: ",modelPairs[i][1])
 
 
 
 
+        print("DEBUG 132: Checking if NN pairs work")
+        
+        yPredOriginalModel = originalModel(x)
+
+
+        for i in range(len(modelPairs)):
+            print("DEBUG 136: ")
+            print("NN1  -->",modelPairs[i][0])
+            print("NN2  -->",modelPairs[i][1])
+
+            nn1Out = modelPairs[i][0](x)
+            print(nn1Out.size())
+
+
+            t=time.time()
+            nn2Out = modelPairs[i][1](nn1Out)
+            totTime += time.time()-t
+            print("totTime=",totTime)
+            print("original out",yPredOriginalModel)
+            print("two model out",nn2Out)
+
+
+
+    print("END:Total time",totTime)
 
 
 
