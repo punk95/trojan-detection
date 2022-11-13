@@ -124,6 +124,20 @@ def appendPoisonToDataset(x,y,poisonLabel=0,poisonType="traingle",poisionSampleC
         return toReturn
 
 
+def printFrequenciesOfOneHotGroundTruth(y):
+        y = np.argmax(y,axis=1)
+        unique, counts = np.unique(y, return_counts=True)
+        print(dict(zip(unique, counts)))
+
+
+
+def saveNumpyAsImage(x,fileName):
+        x = np.squeeze(x)
+        x = x*255
+        x = x.astype(np.uint8)
+        img = Image.fromarray(x, 'RGB')
+        img.save(fileName)
+
 if __name__=="__main__":
         args = argparse.ArgumentParser()
         args.add_argument("--batchSize", type=int, default=32)
@@ -174,8 +188,22 @@ if __name__=="__main__":
 
 
 
+
+
+
         print("Train shapes", xTrain.shape, yTrain.shape)
         print("Test shapes", xTest.shape, yTest.shape)
+
+
+        print("Train frequencies")
+        printFrequenciesOfOneHotGroundTruth(yTrain)
+        print("Test frequencies")
+        printFrequenciesOfOneHotGroundTruth(yTest)
+        print("Poison frequencies")
+        printFrequenciesOfOneHotGroundTruth(mergedPoisonCleanData["poison"][1])
+
+
+        input("aaa")
 
 
 
