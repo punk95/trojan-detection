@@ -227,6 +227,7 @@ class WideResNet_Loading(nn.Module):
 
 """
 
+
 def flattenTheNN(model):
     #print("Calling get all children")
     ans = list(model.children())
@@ -248,8 +249,8 @@ transformToNormalizedTensor = transforms.Compose(
             [transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-
-
+from wrn import WideResNet
+import time
 if __name__ == '__main__':
 
     batchSize = 5
@@ -262,24 +263,33 @@ if __name__ == '__main__':
     testset = torchvision.datasets.CIFAR10(root='data', train=False,download=True, transform=transformToNormalizedTensor)
     testloader = torch.utils.data.DataLoader(testset, batch_size=batchSize,shuffle=False, num_workers=1)
 
-    model_path = "detection/train/trojan/id-0000/model.pt"
+    model_path = "../datasets/detection/train/trojan/id-0001/model.pt"
     model = torch.load(model_path)
     layer_list = flattenTheNN(model)
     break_points = []
     for lIdx in range(len(layer_list)):
         if isinstance(layer_list[lIdx],nn.ReLU):
             break_points.append([lIdx,lIdx+1])
+
+    print("AA", len(break_points))
     L = list(model.children())
     for l in L:
         #print(L)
         pass
     #layer_list = torch.load("layer_list",map_location=torch.device('cpu'))
     #break_points = torch.load("index_list",map_location=torch.device('cpu'))
-    
+    import timeit
+
+
+    T = 0
+    # Your statements here
+
+
     print(break_points)
     m = 0
     for x, yTrue in testloader:
-        if m == 1:#len(break_points)
+        start = timeit.default_timer()
+        if m == 36:#len(break_points)
             break
 
         
@@ -308,7 +318,7 @@ if __name__ == '__main__':
 
         #B2 = NetworkBlock_new(layers_network, n, nChannels[0], nChannels[1], BasicBlock_new, 1, 0.0)
        
-        B = WideResNet_new(layer_list, depth, 10, widen_factor)
+        B = WideResNet_Loading(layer_list, depth, 10, widen_factor)
         C = WideResNet(depth,10,widen_factor)
         
 
@@ -317,8 +327,16 @@ if __name__ == '__main__':
         b = B(a, break_points[q][0], len(layer_list))
 
         c = model(x)
-        
-        print(b,c)
+
+        S = a.size()
+        t = S[0]+S[1]+S[2]+S[3]
+
+        #print(b,c)
         B.modules_no = 0
         m += 1
+
+        stop = timeit.default_timer()
+
+        T += (stop - start)*t
+        print(T)
 """

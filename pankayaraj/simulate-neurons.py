@@ -207,7 +207,7 @@ if __name__ == "__main__":
     args = ArgumentParser()
     args.add_argument("--batchSize", type=int, default=5)
     args.add_argument("--dataset", type=str, default="cifar")
-    args.add_argument("--modelFile", type=str, default="../datasets/detection/train/trojan/id-0000/model.pt")
+    args.add_argument("--modelFile", type=str, default="datasets/detection/train/trojan/id-0000/model.pt")
     args = args.parse_args()
 
     batchSize = args.batchSize
