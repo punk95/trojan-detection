@@ -12,8 +12,8 @@
 #SBATCH --error=gihanError.txt
 
 source ~/.bashrc
-conda activate cmsc828c
-python simulate-neurons.py
+conda activate keras
+python create-trojan.py --epochs 50 --trojan True
 
 
 echo "Job finished at $(date)"
